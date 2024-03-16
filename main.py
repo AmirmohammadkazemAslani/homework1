@@ -67,7 +67,7 @@ def validate_Name(name):
     if len(name) > 10:
         raise HTTPException(status_code=203, detail="name is too long (must be less than 11 digits)")
 
-    for i in persian_char:
+    for i in name:
         if i not in persian_char:
             raise HTTPException(status_code=203, detail="name must be only contain persian characters")
 
@@ -187,43 +187,42 @@ async def address(address:str):
 #practice 8
 
 def validate_postalcode(postalcode):
-    if regex_validate(postalcode, "^(?!(\d)\1{3})[13-9]{4}[1346-9][ -]?[013-9]{5}$|^$"):
-        return {"message": f"your postalcode is {postalcode}."}
+    if not regex_validate(postalcode, "^(?!(\d)\1{3})[13-9]{4}[1346-9][ -]?[013-9]{5}$|^$"):
+        raise HTTPException(status_code=203, detail="postalcode is not correct!")
     return postalcode
 
 @app.get("/postal_code/{postalcode}")
 async def postalcode(postalcode: int):
     postalcode = validate_postalcode(postalcode)
-    raise HTTPException(status_code=203, detail="postal code is not correct.")
+    return {"message": f"your postalcode is {postalcode}."}
 
 
 
 #practice 9
 
 def validate_mobile(mobile):
-    if regex_validate(mobile, "^(?:(?:[1-9]{3})\-(?:[0-9]{3})\-(?:[0-9]{4}))$"):
-        return {"message": f"your mobile number is {mobile}."}
+    if not regex_validate(str(mobile), "^(?:(?:(?:\\+?|00)(98))|(0))?((?:90|91|92|93|99)[0-9]{8})$"):
+        raise HTTPException(status_code=203, detail="mobile number is not correct.")
     return mobile
 
 @app.get("/mobile/{mobile}")
-async def mobile(mobile: str):
+async def mobile(mobile: int):
     mobile = validate_mobile(mobile)
-    raise HTTPException(status_code=203, detail="mobile number is not correct.")
+    return {"message": f"your mobile number is {mobile}."}
 
 
 
 #practice 10
 
 def validate_telephone(telephone):
-    if regex_validate(telephone, "^0\d{2,3}-\d{8}$"):
-        return {"message": f"your telephone number is {telephone}."}
+    if not regex_validate(str(telephone), "^0[0-9]{2,}[0-9]{7,}$"):
+        raise HTTPException(status_code=203, detail="telephone number is not correct.")
     return telephone
 
 @app.get("/telephone/{telephone}")
-async def telephone(telephone: str):
+async def telephone(telephone: int):
     telephone = validate_telephone(telephone)
-    raise HTTPException(status_code=203, detail="telephone number is not correct.")
-
+    return {"message": f"your telephone number is {telephone}."}
 
 #practice 11
 def validate_college(college):
@@ -270,14 +269,16 @@ async def marital(marital: str):
 
 #practice 14
 
-def validate_meli_code(value: str) -> bool:
+def validate_meli_code(value):
     """
     To see how the algorithem works, see http://www.aliarash.com/article/codemeli/codemeli.htm
 
     """
+    value = str(value)
+
     if not len(value) == 10:
         # raise ValueError("کد ملی باید ۱۰ رقم باشد.")
-        return False
+        raise HTTPException(status_code=203, detail="national code is not correct.")
 
     res = 0
     for i, num in enumerate(value[:-1]):
@@ -287,20 +288,20 @@ def validate_meli_code(value: str) -> bool:
     if remain < 2:
         if not remain == int(value[-1]):
             # raise ValueError("کد ملی درست نیست")
-            return False
+            raise HTTPException(status_code=203, detail="national code is not correct.")
     else:
         if not (11 - remain) == int(value[-1]):
             # raise ValueError("کد ملی درست نیست")
-            return False
+            raise HTTPException(status_code=203, detail="national code is not correct.")
 
     return True
 
 
 @app.get("/national_code/{national_code}")
 async def national_code(national_code: int):
-    if validate_meli_code(str(national_code)):
-        return {"message": f"your national code is {national_code}."}
-    raise HTTPException(status_code=203, detail="national code is not correct.")
+    national_code = validate_meli_code(national_code)
+    return {"message": f"your national code is {national_code}."}
+
 
 
 # practice 15
@@ -322,46 +323,87 @@ class Data(BaseModel):
     national_code : int
 
 
-
 @app.post("/general")
 async def general(data: Data):
-    errors : {}
-    errors["code"] = check_code(data.code)
-    errors["name"] = validate_Name(data.code)
-    errors["date"] = validate_date(data.code)
-    errors["serial"] = validate_serial(data.code)
-    errors["province"] = validate_province(data.code)
-    errors["city"] = validate_city(data.code)
-    errors["address"] = validate_address(data.code)
-    errors["postalcode"] = validate_postalcode(data.code)
-    errors["mobile"] = validate_mobile(data.code)
-    errors["telephone"] = validate_telephone(data.code)
-    errors["college"] = validate_college(data.code)
-    errors["field"] = validate_field(data.code)
-    errors["marital"] = validate_marital(data.code)
-    errors["national_code"] = validate_meli_code(data.code)
+    errors = dict()
+
+    try:
+        check_code(data.code)
+    except Exception as e:
+        errors["code"] = e
+
+
+    try:
+        validate_Name(data.name)
+    except Exception as e:
+        errors["name"] = e
+
+
+    try:
+        validate_date(data.date)
+    except Exception as e:
+        errors["date"] = e
+
+    try:
+        validate_serial(data.serial)
+    except Exception as e:
+        errors["serial"] = e
+
+
+    try:
+        validate_province(data.province)
+    except Exception as e:
+        errors["province"] = e
+
+    try:
+        validate_city(data.city)
+    except Exception as e:
+        errors["city"] = e
+
+    try:
+        validate_address(data.address)
+    except Exception as e:
+        errors["address"] = e
+
+
+    try:
+        validate_postalcode(data.postalcode)
+    except Exception as e:
+        errors["postalcode"] = e
+
+    try:
+        validate_mobile(data.mobile)
+    except Exception as e:
+        errors["mobile"] = e
+
+
+    try:
+        validate_telephone(data.telephone)
+    except Exception as e:
+        errors["telephone"] = e
+
+    try:
+        validate_college(data.college)
+    except Exception as e:
+        errors["college"] = e
+
+    try:
+        validate_field(data.field)
+    except Exception as e:
+        errors["field"] = e
+
+    try:
+        validate_marital(data.marital)
+    except Exception as e:
+        errors["marital"] = e
+
+
+    try:
+        validate_meli_code(data.national_code)
+    except Exception as e:
+        errors["national_code"] = e
+
+
 
     return errors
 
-
-
-
-"""
-{
-	"code" : 40211415054,
-	"name" : "امیرمحمد",
-	"date" : "1384-07-09",
-	"serial" : "د87-873983",
-	"province" : "لرستان",
-	"city" : "الیگودرز",
-	"address" : "خ پونه زار",
-	"postalcode" : 6861763569,
-	"mobile" : "09012595444",
-	"telephone" : "06643323220",
-	"college" : "فنی و مهندسی",
-	"field" : "کامپیوتر",
-	"marital" : "مجرد",
-	"national_code" : 4160786200
-}
-
-"""
